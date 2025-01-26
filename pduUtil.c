@@ -17,7 +17,7 @@ int sendPDU(int clientSocket, uint8_t * dataBuffer, int lengthOfData) {
     }
 
     uint8_t pduBuffer[MAXBUF + 2];  // To store the entire PDU
-    int pduLengthField = htons(lengthOfData);  // The length field
+    int pduLengthField = htons(lengthOfData + 2);  // The length field
     memcpy(pduBuffer, &pduLengthField, sizeof(uint16_t));  // Adding the length to the front of the buffer 
     memcpy(pduBuffer + 2, dataBuffer, lengthOfData * sizeof(uint8_t));  // Adding the entire message
     int bytesSent;
@@ -46,7 +46,7 @@ int recvPDU(int socketNumber, uint8_t * dataBuffer, int bufferSize) {
         return -1;
     }
 
-    int messageLen = lenghtBuffer[1]; // Get length of meesage
+    int messageLen = lenghtBuffer[1] - 2; // Get length of meesage
     bytesReceived = recv(socketNumber, dataBuffer, messageLen, MSG_WAITALL); // recv the message length from stream
     if (bytesReceived < 0)  
     {
