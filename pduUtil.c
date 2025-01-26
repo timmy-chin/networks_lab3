@@ -34,17 +34,19 @@ int recvPDU(int socketNumber, uint8_t * dataBuffer, int bufferSize) {
     int bytesReceived = recv(socketNumber, lenghtBuffer, 2, MSG_WAITALL); // recv only 2 bytes
     if (bytesReceived == 0)  
     {
-            printf("Got a length of zero from first PDU recv, close connection\n");
             return 0; // close connection
     }
     else if (bytesReceived < 0)  
     {
-            perror("First PDU recv got an error\n");
-            return -1;
+        if (errno == ECONNRESET)
+        {
+            return 0; // close connection
+        }
+        perror("First PDU recv got an error\n");
+        return -1;
     }
 
     int messageLen = lenghtBuffer[1]; // Get length of meesage
-    printf("Got message length of %d for PDU\n", messageLen);
     bytesReceived = recv(socketNumber, dataBuffer, messageLen, MSG_WAITALL); // recv the message length from stream
     if (bytesReceived < 0)  
     {

@@ -31,6 +31,10 @@
 
 void recvFromClient(int clientSocket);
 int checkArgs(int argc, char *argv[]);
+int addNewSocket(int mainServerSocket);
+void processClient(int clientSocket);
+void serverControl(int mainServerClient);
+void sendToClient(int clientSocket, uint8_t * sendBuf, int sendLen);
 
 int main(int argc, char *argv[])
 {
@@ -43,12 +47,7 @@ int main(int argc, char *argv[])
 	//create the server socket
 	mainServerSocket = tcpServerSetup(portNumber);
 
-	while (1) {
-		// wait for client to connect
-		clientSocket = tcpAccept(mainServerSocket, DEBUG_FLAG);
-
-		recvFromClient(clientSocket);
-	}
+	serverControl(mainServerSocket);
 	
 	/* close the sockets */
 	close(clientSocket);
@@ -73,10 +72,13 @@ void recvFromClient(int clientSocket)
 	if (messageLen > 0)
 	{
 		printf("Message received, length: %d Data: %s\n", messageLen, dataBuffer);
+		sendToClient(clientSocket, dataBuffer, messageLen);
 	}
 	else
 	{
 		printf("Connection closed by other side\n");
+		removeFromPollSet(clientSocket);
+		close(clientSocket);
 	}
 }
 
@@ -99,7 +101,37 @@ int checkArgs(int argc, char *argv[])
 	return portNumber;
 }
 
-void serverControl(){
+void serverControl(int mainServerSocket) {
+	setupPollSet();
+	addToPollSet(mainServerSocket);
+	while (1) {
+		int activeSocket = pollCall(-1); // poll until one is ready
+		if (activeSocket == mainServerSocket) {
+			int clientSocket = addNewSocket(mainServerSocket);
+			addToPollSet(clientSocket);
+		}
+		else {
+			processClient(activeSocket);
+		}
+	}
+}
 
+int addNewSocket(int mainServerSocket) {
+	// wait for client to connect
+	int clientSocket = tcpAccept(mainServerSocket, DEBUG_FLAG);
+	return clientSocket;
+}
+
+void processClient(int clientSocket){
+	recvFromClient(clientSocket);
+}
+
+void sendToClient(int clientSocket, uint8_t * sendBuf, int sendLen) {
+	int sent =  sendPDU(clientSocket, sendBuf, sendLen);
+	if (sent < 0)
+	{
+		perror("send call");
+		exit(-1);
+	}
 }
 
